@@ -1,0 +1,182 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  avatar        String?
+  bio           String?
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  news          AINews[]
+  videos        AIVideo[]
+  images        AIImage[]
+  posts         CommunityPost[]
+  comments      Comment[]
+  likes         Like[]
+  
+  @@map("users")
+}
+
+model AINews {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  content     String?
+  category    String
+  tags        String?  // JSON string array
+  imageUrl    String?
+  sourceUrl   String?
+  views       Int      @default(0)
+  published   Boolean  @default(true)
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+  
+  @@map("ai_news")
+}
+
+model AIVideo {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  videoUrl    String
+  thumbnailUrl String?
+  duration    String?  // in seconds or formatted string
+  category    String
+  tags        String?  // JSON string array
+  views       Int      @default(0)
+  published   Boolean  @default(true)
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+  
+  @@map("ai_videos")
+}
+
+model AIImage {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  thumbnailUrl String?
+  category    String
+  tags        String?  // JSON string array
+  width       Int?
+  height      Int?
+  fileSize    Int?     // in bytes
+  views       Int      @default(0)
+  published   Boolean  @default(true)
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes       Like[]
+  comments    Comment[]
+  
+  @@map("ai_images")
+}
+
+model CommunityPost {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String
+  views     Int      @default(0)
+  pinned    Boolean  @default(false)
+  authorId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  likes     Like[]
+  comments  Comment[]
+  
+  @@map("community_posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  authorId  String
+  postId    String?
+  newsId    String?
+  videoId   String?
+  imageId   String?
+  parentId  String?  // for nested comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post      CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  news      AINews?  @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  video     AIVideo? @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  image     AIImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+  likes     Like[]
+  
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String?
+  newsId    String?
+  videoId   String?
+  imageId   String?
+  commentId String?
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      CommunityPost? @relation(fields: [postId], references: [id], onDelete: Cascade)
+  news      AINews?  @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  video     AIVideo? @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  image     AIImage? @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, postId])
+  @@unique([userId, newsId])
+  @@unique([userId, videoId])
+  @@unique([userId, imageId])
+  @@unique([userId, commentId])
+  @@map("likes")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
